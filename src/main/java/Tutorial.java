@@ -15,7 +15,8 @@ public class Tutorial {
 
     public static void main(String[] args) {
         log.info("My First Apache Shiro Application");
-        Factory factory = new IniSecurityManagerFactory("classpath:shiro.ini");
+//        Factory factory = getFactoryFor("shiro.ini");
+        Factory factory = getFactoryFor("ldap.ini");
         SecurityManager securityManager = (SecurityManager) factory.getInstance();
         SecurityUtils.setSecurityManager(securityManager);
         Subject subject = SecurityUtils.getSubject();
@@ -23,7 +24,7 @@ public class Tutorial {
 
         //Login
         if(!subject.isAuthenticated()){
-            UsernamePasswordToken token = new UsernamePasswordToken("lonestarr","vespa");
+            UsernamePasswordToken token = generateTokenFor("cn=Raju Srivastav,ou=people,dc=example,dc=com", "password");
             subject.login(token);
         }
 
@@ -32,6 +33,24 @@ public class Tutorial {
         session.setAttribute("foo", "bar");
         log.info("Session Attribute Foo: " + session.getAttribute("foo") + "session id: " + session.getId() );
 
+//        basicShiroAuthorization(subject);
+        ldapShiroAuthorization(subject);
+
+
+        //Logout
+        subject.logout();
+
+        log.info("After logout User is " + subject.getPrincipal());
+        // Following line throws exception as the reference to the session is deleted on logout and new session is created.
+//        log.info("After logout Session Attribute Foo: " + session.getAttribute("foo"));
+        subject = SecurityUtils.getSubject();
+        session = subject.getSession();
+        log.info("After logout Session Attribute Foo: " + session.getAttribute("foo") + "session id: " + session.getId() );
+
+        System.exit(0);
+    }
+
+    private static void basicShiroAuthorization(Subject subject) {
         // Roles
         boolean[] hasRoles = subject.hasRoles(Arrays.asList("admin", "schwartz", "goodguy"));
         log.info("admin: " +  hasRoles[0]);
@@ -45,17 +64,23 @@ public class Tutorial {
         log.info("permitted for Lightsaber: " + lightsaber_permit);
         log.info("permitted for Winnebago: " + winnebago_permit);
         log.info("permitted for admin: " + admin_permit);
+    }
 
-        //Logout
-        subject.logout();
+    private static void ldapShiroAuthorization(Subject subject) {
+        // Roles
+        log.info("member of otherGroup: " + subject.hasRole("cn=otherGroup"));
+        log.info("member of non profit: " + subject.hasRole("cn=non profit"));
 
-        log.info("After logout User is " + subject.getPrincipal());
-        // Following line throws exception as the reference to the session is deleted on logout and new session is created.
-//        log.info("After logout Session Attribute Foo: " + session.getAttribute("foo"));
-        subject = SecurityUtils.getSubject();
-        session = subject.getSession();
-        log.info("After logout Session Attribute Foo: " + session.getAttribute("foo") + "session id: " + session.getId() );
+        //Permissions
+    }
 
-        System.exit(0);
+
+
+    private static UsernamePasswordToken generateTokenFor(String username, String password) {
+        return new UsernamePasswordToken(username, password);
+    }
+
+    private static Factory getFactoryFor(final String configFile) {
+        return new IniSecurityManagerFactory("classpath:" + configFile);
     }
 }
